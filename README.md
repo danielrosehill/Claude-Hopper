@@ -23,6 +23,7 @@ Skills for hopping between discrete terminal-bound Claude Code sessions on Linux
 **Side-tasks**
 - `sideclaude` — capture a tangent as a plan file and spawn a parallel Claude session to execute it, keeping the current thread clean
 - `claude-grid` — launch a Konsole window at a path with 2 or 4 split panes, each running its own fresh Claude session
+- `claude-and-shell` — launch a Konsole at a path split left/right: Claude on the left, raw shell on the right
 
 ## Why a separate plugin
 
