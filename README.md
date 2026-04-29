@@ -20,6 +20,9 @@ Skills for hopping between discrete terminal-bound Claude Code sessions on Linux
 - `start-leftover` — pick one or more open items from `planning/leftover-tasks.md` and start them
 - `spawn-planning-repo` — create a sibling planning repo, seed it with context
 
+**Side-tasks**
+- `sideclaude` — capture a tangent as a plan file and spawn a parallel Claude session to execute it, keeping the current thread clean
+
 ## Why a separate plugin
 
 Carved out of [Claude-Rudder](https://github.com/danielrosehill/Claude-Rudder) so users who only need session-spawning + handover primitives don't load the full Rudder context surface.
