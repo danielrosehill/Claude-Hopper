@@ -50,32 +50,69 @@ Write the plan to `planning/sideclaude/<YYYY-MM-DD>-<slug>.md` at the repo root 
 
 If the repo isn't a git repo or has no obvious root, use `$PWD/planning/sideclaude/` and tell the user.
 
-### 2. Spawn the side session
+### 2. Spawn the side session as a split-left/right pane
 
-Snapshot Konsole PIDs, then spawn detached at `$PWD` with an initial prompt that points the new Claude at the plan file:
+Preferred path: open the side session as a **Split Left/Right** pane inside the *current* Konsole window — both panes visible, no new window, parent session keeps running on the left.
+
+Konsole exports `$KONSOLE_DBUS_SERVICE`, `$KONSOLE_DBUS_WINDOW`, and `$KONSOLE_DBUS_SESSION` into every session it spawns, so the current window/session is addressable via D-Bus without guessing. The relevant methods:
+
+- `org.kde.konsole.Window.currentSession() → int` — id of the focused view
+- `org.kde.konsole.Window.createSplit(int viewId, bool horizontalSplit) → bool` — `horizontalSplit=true` is **Split Left/Right** (panes laid out horizontally, vertical divider between them); `false` is Split Top/Bottom
+- `org.kde.konsole.Window.sessionList() → QStringList` — to find the new session id after the split
+- `org.kde.konsole.Session.runCommand(QString)` — start `claude` in the new pane
+
+Recipe:
 
 ```bash
 PLAN_PATH="planning/sideclaude/<file>.md"
 PROMPT="Read $PLAN_PATH and execute the plan. This is a sideclaude session — the plan file is your full brief. Append a status note at the bottom of the file when done."
-before=$(pgrep -x konsole)
-setsid konsole --workdir "$PWD" -e claude "$PROMPT" >/dev/null 2>&1 &
+
+SVC="$KONSOLE_DBUS_SERVICE"
+WIN="$KONSOLE_DBUS_WINDOW"
+
+if [ -z "$SVC" ] || [ -z "$WIN" ]; then
+  echo "Not running inside a Konsole session — falling back to new window." >&2
+  # See fallback below.
+else
+  CUR_VIEW=$(qdbus6 "$SVC" "$WIN" currentSession)
+  BEFORE_IDS=$(qdbus6 "$SVC" "$WIN" sessionList)
+  qdbus6 "$SVC" "$WIN" createSplit "$CUR_VIEW" true   # true = Split Left/Right
+  AFTER_IDS=$(qdbus6 "$SVC" "$WIN" sessionList)
+  NEW_ID=$(comm -13 <(echo "$BEFORE_IDS" | tr ' ' '\n' | sort) \
+                    <(echo "$AFTER_IDS"  | tr ' ' '\n' | sort) | tail -1)
+  if [ -z "$NEW_ID" ]; then
+    echo "createSplit succeeded but couldn't find new session id — aborting." >&2
+    exit 1
+  fi
+  # cd into the parent's $PWD, then launch claude with the prompt.
+  qdbus6 "$SVC" "/Sessions/$NEW_ID" runCommand "cd $(printf '%q' "$PWD") && claude $(printf '%q' "$PROMPT")"
+fi
 ```
 
-Verify a new Konsole PID appeared:
+Notes:
+- `qdbus6` is the Plasma 6 binary; on older systems it's `qdbus`. Try `qdbus6` first, fall back to `qdbus`.
+- `horizontalSplit=true` matches what the Konsole UI labels **Split View → Split Left/Right** (panes side by side). `false` is top/bottom.
+- `runCommand` types into the new shell — quoting matters. Use `printf %q` to escape `$PWD` and the prompt safely.
+
+### 3. Fallback: new window
+
+If we're not inside a Konsole (`$KONSOLE_DBUS_SERVICE` empty — e.g. running under tmux, ssh, or a different terminal), spawn a detached window instead:
 
 ```bash
+before=$(pgrep -x konsole)
+setsid konsole --workdir "$PWD" -e claude "$PROMPT" >/dev/null 2>&1 &
 after=$(pgrep -x konsole)
 comm -13 <(echo "$before" | sort) <(echo "$after" | sort)
 ```
 
 If no new PID appears, abort and report — do not retry blindly.
 
-### 3. Stay put
+### 4. Stay put
 
-Unlike `new-claude-here`, **do not close the current Konsole**. The whole point is that the parent session keeps going. Report back to the user:
+Unlike `new-claude-here`, **do not close the current Konsole / current pane**. The whole point is that the parent session keeps going. Report back to the user:
 
 - Plan file path
-- New Konsole PID
+- Whether the side session was opened as a split pane or a new window (and the new session/PID)
 - One-line reminder that the current session is unchanged and ready to continue the original task
 
 ## Notes
