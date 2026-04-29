@@ -1,5 +1,7 @@
 # Claude-Hopper
 
+![Claude Hopper banner](banner.png)
+
 Skills for hopping between discrete terminal-bound Claude Code sessions on Linux. Spawn new instances, hand off context, resume from handovers, and pick up leftover work.
 
 ## Skills
