@@ -8,6 +8,7 @@ Skills for hopping between discrete terminal-bound Claude Code sessions on Linux
 - `new-claude-here` — open a new Konsole window running a fresh Claude session in the current cwd
 - `new-claude-at` — open a new Konsole window running a fresh Claude session at a specified path
 - `terminal-here` — open a Konsole at the current directory (no Claude)
+- `vscode-here` — open VS Code at the current directory
 - `new-workspace` — scaffold a generic workspace dir from the bundled template
 
 **Handover**
